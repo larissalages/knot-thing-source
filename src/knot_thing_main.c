@@ -12,11 +12,13 @@
 #include <errno.h>
 #include <string.h>
 
+#include <hal/storage.h>
 #include <hal/time.h>
 #include "knot_thing_config.h"
 #include "knot_types.h"
 #include "knot_thing_main.h"
 #include <avr/pgmspace.h>
+
 
 // TODO: normalize all returning error codes
 
@@ -195,14 +197,27 @@ int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
 					uint32_t upper_dec, int32_t lower_int,
 					uint32_t lower_dec)
 {
+	int8_t ret_val = -1;
 	struct _data_items *item;
 
 	/*TODO: Check if exist something in eprom and save the data there*/
-	/*TODO: Check if config is valid*/
+	knot_value_types lower;
+	knot_value_types upper;
+
+	lower.val_f.value_int = lower_int;
+	lower.val_f.value_dec = lower_dec;
+
+	upper.val_f.value_int = upper_int;
+	upper.val_f.value_dec = upper_dec;
+
+	if (knot_config_is_valid(event_flags, time_sec, &lower, &upper)
+								!= KNOT_SUCCESS)
+		goto done;
+
 	item = find_item(id);
 
 	if (!item)
-		return -1;
+		goto done;
 
 	item->config.event_flags = event_flags;
 	item->config.time_sec = time_sec;
@@ -213,7 +228,12 @@ int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
 	item->config.upper_limit.val_f.value_int = upper_int;
 	item->config.upper_limit.val_f.value_dec = upper_dec;
 
-	return 0;
+	ret_val = 0;
+
+
+done:
+	return ret_val;
+
 }
 
 int knot_thing_config_data_item(uint8_t id, uint8_t evflags, uint16_t time_sec,
