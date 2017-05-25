@@ -49,6 +49,11 @@ static struct _data_items {
 	knot_data_functions	functions;
 } data_items[KNOT_THING_DATA_MAX];
 
+struct data_config_store{
+	uint8_t			sensor_id;
+	knot_config		config;
+};
+
 static struct _data_items *find_item(uint8_t id)
 {
 	uint8_t index;
@@ -199,14 +204,59 @@ int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
 {
 	int8_t ret_val = -1;
 	struct _data_items *item;
-
-	/*TODO: Check if exist something in eprom and save the data there*/
+	struct data_config_store data_config_store[KNOT_THING_DATA_MAX];
+	size_t data_config_store_len = sizeof(data_config_store);
+	uint16_t i;
+	ssize_t config_len;
+	uint8_t number_of_configs;
 	knot_value_types lower;
 	knot_value_types upper;
 
+
+
+	/* Count how many configs are in eeprom */
+	config_len = hal_storage_read_end(HAL_STORAGE_ID_CONFIG,
+			(void *) data_config_store, data_config_store_len);
+
+	if (config_len < 0)
+		goto done;
+
+	number_of_configs = config_len / CONFIG_SIZE_UNITY;
+
+	item = find_item(id);
+
+	if (!item)
+		goto done;
+
+	/* Check if this id already has an associated configuration */
+	for (i = 0 ; i < (number_of_configs) ; i++) {
+		if (data_config_store[i].sensor_id == id) {
+
+			item->config.event_flags =
+				data_config_store[i].config.event_flags;
+
+			item->config.time_sec =
+				data_config_store[i].config.time_sec;
+
+			item->config.lower_limit.val_f.value_int =
+				data_config_store[i].config.lower_limit.val_f.value_int;
+
+			item->config.lower_limit.val_f.value_dec =
+				data_config_store[i].config.lower_limit.val_f.value_dec;
+
+			item->config.upper_limit.val_f.value_int =
+				data_config_store[i].config.upper_limit.val_f.value_int;
+
+			item->config.upper_limit.val_f.value_dec =
+				data_config_store[i].config.upper_limit.val_f.value_dec;
+
+			ret_val = 0;
+			goto done;
+		}
+	}
+
 	lower.val_f.value_int = lower_int;
 	lower.val_f.value_dec = lower_dec;
-
 	upper.val_f.value_int = upper_int;
 	upper.val_f.value_dec = upper_dec;
 
@@ -214,10 +264,6 @@ int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
 								!= KNOT_SUCCESS)
 		goto done;
 
-	item = find_item(id);
-
-	if (!item)
-		goto done;
 
 	item->config.event_flags = event_flags;
 	item->config.time_sec = time_sec;
