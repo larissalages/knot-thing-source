@@ -206,14 +206,30 @@ int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
 {
 	int8_t ret_val = -1;
 	struct _data_items *item;
-
-	/*TODO: Check if exist something in eprom and save the data there*/
+	size_t data_config_store_len = sizeof(data_config_store);
+	uint16_t i;
+	ssize_t config_len;
+	uint8_t number_of_configs;
 	knot_value_types lower;
 	knot_value_types upper;
 
+
+	/*Count how many configs are in eeprom*/
+	config_len = hal_storage_read_end(HAL_STORAGE_ID_CONFIG,
+			(void *) data_config_store, data_config_store_len);
+
+	if (config_len < 0)
+		goto done;
+
+	number_of_configs = config_len / CONFIG_SIZE_UNITY;
+
+	/*Check if this id already has an associated configuration*/
+	for (i = 0 ; i < (number_of_configs) ; i++)
+		if (data_config_store[i].sensor_id == id)
+			goto done;
+
 	lower.val_f.value_int = lower_int;
 	lower.val_f.value_dec = lower_dec;
-
 	upper.val_f.value_int = upper_int;
 	upper.val_f.value_dec = upper_dec;
 
