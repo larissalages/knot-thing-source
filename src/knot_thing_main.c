@@ -251,6 +251,13 @@ int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
 	item->config.upper_limit.val_f.value_int = upper_int;
 	item->config.upper_limit.val_f.value_dec = upper_dec;
 
+	/*Store config in eeprom*/
+	memcpy(&data_config_store[number_of_configs].config, &item->config,
+							sizeof(item->config));
+	data_config_store[number_of_configs].sensor_id = id;
+	hal_storage_write_end(HAL_STORAGE_ID_CONFIG, (void *) data_config_store,
+						config_len + CONFIG_SIZE_UNITY);
+
 	ret_val = 0;
 
 
