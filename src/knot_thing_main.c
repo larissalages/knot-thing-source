@@ -251,6 +251,14 @@ int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
 	item->config.upper_limit.val_f.value_int = upper_int;
 	item->config.upper_limit.val_f.value_dec = upper_dec;
 
+	/*
+	 * The multiplier is not being used now, but it is important to know
+	 * that it exists because it takes up space in eeprom.
+	 */
+	item->config.upper_limit.val_f.multiplier = 1;
+	item->config.lower_limit.val_f.multiplier = 1;
+
+
 	/*Store config in eeprom*/
 	memcpy(&data_config_store[number_of_configs].config, &item->config,
 							sizeof(item->config));
