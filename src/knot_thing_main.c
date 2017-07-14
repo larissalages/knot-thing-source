@@ -256,9 +256,41 @@ int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
 					uint32_t lower_dec)
 {
 	struct _data_items *item;
+	knot_value_types lower;
+	knot_value_types upper;
+	struct data_config_store data_config_store[KNOT_THING_DATA_MAX];
+	size_t data_config_store_len = sizeof(data_config_store);
+	ssize_t config_len;
+	uint8_t number_of_configs;
+	int pos;
 
-	/*TODO: Check if exist something in eprom and save the data there*/
-	/*TODO: Check if config is valid*/
+	lower.val_f.value_int = lower_int;
+	lower.val_f.value_dec = lower_dec;
+	upper.val_f.value_int = upper_int;
+	upper.val_f.value_dec = upper_dec;
+
+	/*Check if config is valid*/
+	if (knot_config_is_valid(event_flags, time_sec, &lower, &upper)
+								!= KNOT_SUCCESS)
+		return -1;
+
+	/* Check if this id already has an associated configuration */
+	config_len = hal_storage_read_end(HAL_STORAGE_ID_CONFIG,
+			(void *) data_config_store, data_config_store_len);
+
+	if (config_len < 0)
+		return -1;
+
+	number_of_configs = config_len / CONFIG_SIZE_UNITY;
+
+	/*Check if the config already exist inside eeprom and its position*/
+	pos = exist_config(number_of_configs, id, data_config_store);
+
+	/*A config already exist*/
+	if (pos >= 0)
+		return 0;
+
+	/*Verify if id exist*/
 	item = find_item(id);
 
 	if (!item)
