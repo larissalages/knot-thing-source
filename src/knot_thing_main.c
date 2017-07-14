@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include <hal/storage.h>
 #include <hal/time.h>
 #include "knot_thing_config.h"
 #include "knot_types.h"
@@ -61,6 +62,11 @@ static struct _data_items *find_item(uint8_t id)
 
 	return NULL;
 }
+
+struct data_config_store{
+	uint8_t			sensor_id;
+	knot_config		config;
+};
 
 static void reset_data_items(void)
 {
@@ -137,7 +143,17 @@ int8_t knot_thing_register_raw_data_item(uint8_t id, const char *name,
 
 	return 0;
 }
+uint8_t exist_config(uint8_t number_of_configs, uint8_t id,
+				struct data_config_store *data_config_store)
+{
+/*Return the position in vector of configs if it already exist in eeprom*/
+	int i;
 
+	for (i = 0 ; i < (number_of_configs) ; i++)
+		if (data_config_store[i].sensor_id == id)
+			return i;
+	return -1;
+}
 /*
  * TODO: investigate if index/id or a pointer to the registered item
  * can be returned in order to access/manage the entry easier.
@@ -147,7 +163,12 @@ int8_t knot_thing_register_data_item(uint8_t id, const char *name,
 				uint8_t unit, knot_data_functions *func)
 {
 	struct _data_items *item;
+	struct data_config_store data_config_store[KNOT_THING_DATA_MAX];
+	size_t data_config_store_len = sizeof(data_config_store);
 	uint8_t index;
+	ssize_t config_len;
+	uint8_t number_of_configs;
+	int pos;
 
 	for (index = 0, item = NULL; index < KNOT_THING_DATA_MAX; index++) {
 		if (data_items[index].id == 0) {
@@ -166,9 +187,53 @@ int8_t knot_thing_register_data_item(uint8_t id, const char *name,
 	item->type_id					= type_id;
 	item->unit					= unit;
 	item->value_type				= value_type;
-	// TODO: load flags and limits from persistent storage
-	/* Remove KNOT_EVT_FLAG_UNREGISTERED flag */
-	item->config.event_flags			= KNOT_EVT_FLAG_NONE;
+
+	item->last_value_raw				= NULL;
+	/* As "functions" is a union, we need just to set only one of its members */
+	item->functions.int_f.read			= func->int_f.read;
+	item->functions.int_f.write			= func->int_f.write;
+	/* Starting last_timeout with the current time */
+	item->last_timeout 				= hal_time_ms();
+
+	/* Check if this id already has an associated configuration */
+	config_len = hal_storage_read_end(HAL_STORAGE_ID_CONFIG,
+			(void *) data_config_store, data_config_store_len);
+
+	if (config_len < 0)
+		return -1;
+
+	number_of_configs = config_len / CONFIG_SIZE_UNITY;
+
+	/*Check if the config already exist inside eeprom and its position*/
+	pos = exist_config(number_of_configs, id, data_config_store);
+
+	if (pos < 0)
+		goto default_values;
+
+	item->config.event_flags =
+		data_config_store[pos].config.event_flags;
+
+	item->config.time_sec =
+		data_config_store[pos].config.time_sec;
+
+	item->config.lower_limit.val_f.value_int =
+		data_config_store[pos].config.lower_limit.val_f.value_int;
+
+	item->config.lower_limit.val_f.value_dec =
+		data_config_store[pos].config.lower_limit.val_f.value_dec;
+
+	item->config.upper_limit.val_f.value_int =
+		data_config_store[pos].config.upper_limit.val_f.value_int;
+
+	item->config.upper_limit.val_f.value_dec =
+		data_config_store[pos].config.upper_limit.val_f.value_dec;
+	return 0;
+
+
+default_values:
+	/* If there is nothing in the eeprom, put the default values in item */
+	item->config.event_flags			= KNOT_EVT_FLAG_TIME;
+	item->config.time_sec 				= 30;
 	/* As "last_data" is a union, we need just to set the "biggest" member */
 	item->last_data.val_f.multiplier		= 1;
 	item->last_data.val_f.value_int			= 0;
@@ -181,12 +246,7 @@ int8_t knot_thing_register_data_item(uint8_t id, const char *name,
 	item->config.upper_limit.val_f.multiplier	= 1;
 	item->config.upper_limit.val_f.value_int	= 0;
 	item->config.upper_limit.val_f.value_dec	= 0;
-	item->last_value_raw				= NULL;
-	/* As "functions" is a union, we need just to set only one of its members */
-	item->functions.int_f.read			= func->int_f.read;
-	item->functions.int_f.write			= func->int_f.write;
-	/* Starting last_timeout with the current time */
-	item->last_timeout 				= hal_time_ms();
+
 	return 0;
 }
 
