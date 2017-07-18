@@ -191,39 +191,17 @@ int8_t knot_thing_register_data_item(uint8_t id, const char *name,
 	return 0;
 }
 
-int8_t knot_thing_register_config_item(uint8_t id, uint8_t event_flags,
-					uint16_t time_sec, int32_t upper_int,
-					uint32_t upper_dec, int32_t lower_int,
-					uint32_t lower_dec)
-{
-	struct _data_items *item;
-
-	/*TODO: Check if exist something in eprom and save the data there*/
-	/*TODO: Check if config is valid*/
-	item = find_item(id);
-
-	if (!item)
-		return -1;
-
-	item->config.event_flags = event_flags;
-	item->config.time_sec = time_sec;
-
-	item->config.lower_limit.val_f.value_int = lower_int;
-	item->config.lower_limit.val_f.value_dec = lower_dec;
-
-	item->config.upper_limit.val_f.value_int = upper_int;
-	item->config.upper_limit.val_f.value_dec = upper_dec;
-
-	return 0;
-}
-
 int knot_thing_config_data_item(uint8_t id, uint8_t evflags, uint16_t time_sec,
 							knot_value_types *lower,
 							knot_value_types *upper)
 {
 	struct _data_items *item = find_item(id);
 
-	/* FIXME: Check if config is valid */
+	/*Check if config is valid*/
+	if (knot_config_is_valid(evflags, time_sec, lower, upper)
+								!= KNOT_SUCCESS)
+		return -1;
+
 	if (!item)
 		return -1;
 
@@ -241,7 +219,7 @@ int knot_thing_config_data_item(uint8_t id, uint8_t evflags, uint16_t time_sec,
 	if (upper)
 		memcpy(&(item->config.upper_limit), upper, sizeof(*upper));
 
-	// TODO: store flags and limits on persistent storage
+
 
 	return 0;
 }
