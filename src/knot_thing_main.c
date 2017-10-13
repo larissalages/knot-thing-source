@@ -250,6 +250,34 @@ int knot_thing_create_schema(uint8_t id, knot_msg_schema *msg)
 	return KNOT_SUCCESS;
 }
 
+int knot_thing_create_config(uint8_t id, knot_msg_config *msg)
+{
+	struct _data_items *item;
+
+	item = find_item(id);
+	if (item == NULL)
+		return KNOT_INVALID_DEVICE;
+
+	msg->hdr.type = KNOT_MSG_CONFIG;
+
+	/*Redundancy. This if is not necessary*/
+	if (!item)
+		return KNOT_INVALID_DEVICE;
+
+	msg->sensor_id = id;
+	msg->values.event_flags = item->config.event_flags;
+	msg->values.time_sec = item->config.time_sec;
+	msg->values.lower_limit = item->config.lower_limit;
+	msg->values.upper_limit = item->config.upper_limit;
+	msg->hdr.payload_len = sizeof(msg->values) + sizeof(msg->sensor_id);
+
+	/* Send 'end' for the last item (sensor or actuator). */
+	if (data_items[last_item].id == id)
+		msg->hdr.type = KNOT_MSG_CONFIG_END;
+
+	return KNOT_SUCCESS;
+}
+
 int knot_thing_data_item_read(uint8_t id, knot_msg_data *data)
 {
 	struct _data_items *item;
