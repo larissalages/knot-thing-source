@@ -42,7 +42,7 @@ ifdef release
 	KNOT_HAL_LIB_VERSION = $(release)
 endif
 KNOT_HAL_LIB_REPO = knot-hal-source
-KNOT_HAL_LIB_SITE = https://github.com/CESARBR/$(KNOT_HAL_LIB_REPO).git
+KNOT_HAL_LIB_SITE = https://github.com/larissalages/$(KNOT_HAL_LIB_REPO).git
 KNOT_HAL_HDR_LIB_DIR = ./$(KNOT_THING_DOWNLOAD_DIR)/$(KNOT_HAL_LIB_REPO)/hal
 KNOT_HAL_SRC_LIB_DIR = ./$(KNOT_THING_DOWNLOAD_DIR)/$(KNOT_HAL_LIB_REPO)/src/hal
 
