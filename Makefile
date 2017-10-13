@@ -29,12 +29,12 @@ ifdef release
 endif
 
 #Dependencies
-KNOT_PROTOCOL_LIB_VERSION = dssv_config_v2
+KNOT_PROTOCOL_LIB_VERSION = master
 ifdef release
 	KNOT_PROTOCOL_LIB_VERSION = $(release)
 endif
 KNOT_PROTOCOL_LIB_REPO = knot-protocol-source
-KNOT_PROTOCOL_LIB_SITE = https://github.com/dssv/$(KNOT_PROTOCOL_LIB_REPO).git
+KNOT_PROTOCOL_LIB_SITE = https://github.com/larissalages/$(KNOT_PROTOCOL_LIB_REPO).git
 KNOT_PROTOCOL_LIB_DIR = ./$(KNOT_THING_DOWNLOAD_DIR)/$(KNOT_PROTOCOL_LIB_REPO)/src
 
 KNOT_HAL_LIB_VERSION = master
