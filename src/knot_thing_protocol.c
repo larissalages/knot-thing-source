@@ -43,6 +43,9 @@
 #define STATE_ONLINE			7
 #define STATE_RUNNING			8
 #define STATE_ERROR			9
+#define STATE_CONFIG     		10
+#define STATE_CONFIG_RESP 		11
+
 
 /* Intervals for LED blinking */
 #define LONG_INTERVAL			5000
@@ -75,6 +78,7 @@ static char *device_name = NULL;
 static int sock = -1;
 static int cli_sock = -1;
 static bool schema_flag = false;
+static bool config_flag = false;
 static uint8_t enable_run = 0, msg_sensor_id = 0;
 
 
@@ -621,6 +625,42 @@ int knot_thing_protocol_run(void)
 		} else if (hal_timeout(hal_time_ms(), last_timeout,
 						RETRANSMISSION_TIMEOUT) > 0)
 			run_state = STATE_SCHEMA;
+		break;
+
+	case STATE_CONFIG:
+		break;
+	/*
+	 * Receives the ack from the GW and returns to STATE_CONFIG to send the
+	 * next config. If it was the ack for the last config, goes to
+	 * STATE_ONLINE. If it is not a KNOT_MSG_CONFIG_RESP, ignores. If the
+	 * result was not KNOT_SUCCESS, goes to STATE_ERROR.
+	 */
+	case STATE_CONFIG_RESP:
+		led_status(BLINK_STABLISHING);
+		hal_log_str("SCH_R");
+		if (hal_comm_read(cli_sock, &(msg.buffer), KNOT_MSG_SIZE) > 0) {
+			if (msg.hdr.type != KNOT_MSG_CONFIG_RESP &&
+				msg.hdr.type != KNOT_MSG_CONFIG_END_RESP)
+				break;
+			if (msg.action.result != KNOT_SUCCESS) {
+				run_state = STATE_CONFIG;
+				break;
+			}
+			if (msg.hdr.type != KNOT_MSG_CONFIG_END_RESP) {
+				run_state = STATE_CONFIG;
+				msg_sensor_id++;
+				break;
+			}
+			/* All the configs were sent to GW */
+			config_flag = true;
+			hal_storage_write_end(HAL_STORAGE_ID_CONFIG_FLAG,
+					&config_flag, sizeof(config_flag));
+			run_state = STATE_ONLINE;
+			hal_log_str("ONLN");
+			msg_sensor_id = 0;
+		} else if (hal_timeout(hal_time_ms(), last_timeout,
+						RETRANSMISSION_TIMEOUT) > 0)
+			run_state = STATE_CONFIG;
 		break;
 
 	case STATE_ONLINE:
