@@ -225,7 +225,7 @@ static int send_register(void)
 {
 	uint8_t len;
 
-	len = MIN(sizeof(msg.reg.devName), strlen(config.name));
+	len = MIN(20*sizeof(char), strlen(config.name));
 	msg.hdr.type = KNOT_MSG_REGISTER_REQ;
 	msg.reg.id = config.mac.address.uint64; /* Maps id to nRF24 MAC */
 	strncpy(msg.reg.devName, config.name, len);
